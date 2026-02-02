@@ -46,6 +46,11 @@ class DatabaseService:
         result = self.client.table('links').select('*').eq('id', link_id).execute()
         return result.data[0] if result.data else None
 
+    async def get_link_by_url(self, url: str) -> Optional[dict]:
+        """URL로 링크 조회 (중복 체크용)"""
+        result = self.client.table('links').select('*').eq('url', url).execute()
+        return result.data[0] if result.data else None
+
     async def get_links_count(self) -> int:
         result = self.client.table('links').select('id', count='exact').execute()
         return result.count or 0

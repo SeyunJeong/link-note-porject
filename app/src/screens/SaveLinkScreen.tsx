@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,22 +6,29 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { linkApi } from '../services/api';
+import { RootStackParamList } from '../../App';
+import { showToast } from '../utils/toast';
 
-interface SaveLinkScreenProps {
-  initialUrl?: string;
-  onSaved?: () => void;
-}
+type SaveLinkScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SaveLink'>;
+type SaveLinkScreenRouteProp = RouteProp<RootStackParamList, 'SaveLink'>;
 
-export const SaveLinkScreen: React.FC<SaveLinkScreenProps> = ({
-  initialUrl = '',
-  onSaved,
-}) => {
-  const [url, setUrl] = useState(initialUrl);
+export const SaveLinkScreen: React.FC = () => {
+  const navigation = useNavigation<SaveLinkScreenNavigationProp>();
+  const route = useRoute<SaveLinkScreenRouteProp>();
+  const [url, setUrl] = useState(route.params?.url || '');
+
+  // params로 전달된 URL이 변경되면 업데이트
+  useEffect(() => {
+    if (route.params?.url) {
+      setUrl(route.params.url);
+    }
+  }, [route.params?.url]);
   const [loading, setLoading] = useState(false);
   const [savedLink, setSavedLink] = useState<{
     title: string;
@@ -30,7 +37,7 @@ export const SaveLinkScreen: React.FC<SaveLinkScreenProps> = ({
 
   const handleSave = async () => {
     if (!url.trim()) {
-      Alert.alert('오류', 'URL을 입력해주세요.');
+      showToast.error('URL을 입력해주세요.');
       return;
     }
 
@@ -43,12 +50,15 @@ export const SaveLinkScreen: React.FC<SaveLinkScreenProps> = ({
         title: result.title,
         summary: result.summary,
       });
-      setUrl('');
-      onSaved?.();
+      showToast.success('저장 완료!', result.title);
+      // 1.5초 후 홈 화면으로 자동 이동
+      setTimeout(() => {
+        navigation.goBack();
+      }, 1500);
     } catch (err: any) {
       const message =
         err.response?.data?.detail || '링크를 저장할 수 없습니다.';
-      Alert.alert('오류', message);
+      showToast.error('링크 저장 실패', message);
     } finally {
       setLoading(false);
     }

@@ -18,6 +18,19 @@
 | AI-02 | AI 태그 및 카테고리 분류 개선 | 2024-01-19 |
 | AI-03 | AI 요청 실패 시 폴백 처리 | 2024-01-20 |
 | BE-03 | 링크 삭제 API 구현 | 2025-01-21 |
+| BE-04 | 링크 중복 저장 방지 | 2025-02-02 |
+| APP-01 | 앱 환경 변수 및 API 연결 설정 | 2025-02-02 |
+| APP-02 | 홈 화면 FAB 버튼 및 네비게이션 개선 | 2025-02-02 |
+| APP-03 | 링크 상세 화면 구현 | 2025-02-02 |
+| APP-04 | 링크 삭제 기능 (앱) | 2025-02-02 |
+| APP-05 | Android 공유 인텐트 수신 구현 | 2025-02-02 |
+| APP-06 | iOS 공유 익스텐션 기본 설정 | 2025-02-02 |
+| APP-07 | 에러 처리 및 토스트 메시지 시스템 | 2025-02-03 |
+| APP-08 | 로딩 상태 및 스켈레톤 UI 구현 | 2025-02-03 |
+| APP-09 | 앱 아이콘 및 스플래시 화면 설정 | 2025-02-03 |
+| SERVER-02 | 서버 배포 (Railway/Render) | 2025-02-03 |
+| APP-10 | 프로덕션 API URL 설정 및 빌드 테스트 | 2025-02-03 |
+| APP-11 | EAS Build 설정 및 APK/IPA 빌드 | 2025-02-03 |
 
 ---
 
@@ -614,6 +627,453 @@ async def delete_link(link_id: str):
 
 ---
 
+## TASK BE-04: 링크 중복 저장 방지 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | 동일한 URL 중복 저장 방지 |
+| **작업 유형** | 백엔드 |
+| **의존성** | BE-03 완료 |
+
+### 구현 내용
+
+#### 1. Database 서비스에 URL 조회 메서드 추가
+```python
+# server/app/services/database.py
+async def get_link_by_url(self, url: str) -> Optional[dict]:
+    """URL로 링크 조회 (중복 체크용)"""
+    result = self.client.table('links').select('*').eq('url', url).execute()
+    return result.data[0] if result.data else None
+```
+
+#### 2. 저장 로직에 중복 체크 추가
+```python
+# server/app/api/links.py
+@router.post("/save", response_model=LinkResponse)
+async def save_link(link: LinkCreate):
+    url = link.url.strip()
+
+    if not youtube_service.is_youtube_url(url):
+        raise HTTPException(status_code=400, detail="현재는 유튜브 링크만 지원합니다.")
+
+    # 1. URL 정규화
+    normalized_url = youtube_service.normalize_youtube_url(url)
+
+    # 2. 중복 체크
+    existing = await db_service.get_link_by_url(normalized_url)
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail="이미 저장된 링크입니다.",
+            headers={"X-Existing-Link-Id": existing['id']}
+        )
+
+    # 3. 저장 진행 (정규화된 URL 사용)
+    ...
+```
+
+### 테스트 결과 체크
+- [x] BE04-TC01: 최초 저장 성공 (200 응답)
+- [x] BE04-TC02: 중복 저장 시 409 에러 반환
+- [x] BE04-TC03: 단축 URL 중복 감지 (youtu.be → youtube.com 정규화 후 비교)
+- [x] BE04-TC04: URL 정규화 동작 확인 (5개 케이스)
+
+### 설계 결정
+| 결정 사항 | 이유 |
+|-----------|------|
+| URL 정규화 후 저장 | 다양한 형식의 YouTube URL을 표준 형식으로 통일 |
+| 409 Conflict 응답 | HTTP 표준에 맞는 중복 리소스 응답 코드 |
+| X-Existing-Link-Id 헤더 | 클라이언트가 기존 링크 ID를 알 수 있도록 |
+| 정규화된 URL로 DB 저장 | 중복 체크 정확도 향상 |
+
+### 테스트 파일
+- `server/tests/test_duplicate_prevention.py`: 8개 테스트 케이스
+  - `TestURLNormalization`: URL 정규화 테스트 (5개)
+  - `TestDuplicatePrevention`: API 중복 방지 테스트 (3개)
+
+### 참고 파일
+- `server/app/api/links.py`
+- `server/app/services/database.py`
+- `server/app/services/youtube.py`
+
+---
+
+# PHASE 4: 앱 기능 구현
+
+---
+
+## TASK APP-01: 앱 환경 변수 및 API 연결 설정 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | Expo 앱에서 환경 변수를 통한 API URL 관리 |
+| **작업 유형** | 앱 |
+| **의존성** | BE-04 완료 |
+
+### 구현 내용
+
+#### 1. app.config.js 생성
+```javascript
+// app.config.js
+export default {
+  expo: {
+    // ... 기존 설정
+    extra: {
+      apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:8000/api',
+    },
+  },
+};
+```
+
+#### 2. 환경 설정 모듈 생성
+```typescript
+// src/config/index.ts
+import Constants from 'expo-constants';
+
+const getConfig = () => ({
+  apiBaseUrl: Constants.expoConfig?.extra?.apiBaseUrl || 'http://localhost:8000/api',
+});
+
+export const config = getConfig();
+```
+
+#### 3. API 서비스 수정
+```typescript
+// src/services/api.ts
+import { config } from '../config';
+
+const API_BASE_URL = config.apiBaseUrl;
+// deleteLink API 추가
+```
+
+#### 4. 타입 선언 파일 추가
+- `src/types/expo-constants.d.ts`: expo-constants 타입 정의
+
+### 테스트 결과 체크
+- [x] APP01-TC01: 환경 변수 로드 확인 (`env: load .env`)
+- [x] APP01-TC02: TypeScript 타입 체크 통과
+- [x] APP01-TC03: API 서비스 환경 변수 사용
+
+### 설계 결정
+| 결정 사항 | 이유 |
+|-----------|------|
+| app.config.js 사용 | Expo 공식 권장 방식, process.env 접근 가능 |
+| config 모듈 분리 | 타입 안정성, 중앙 집중 관리 |
+| expo-constants 타입 직접 정의 | 패키지 타입 누락 대응 |
+
+### 참고 파일
+- `app/app.config.js`
+- `app/src/config/index.ts`
+- `app/src/services/api.ts`
+- `app/src/types/expo-constants.d.ts`
+- `app/.env`
+
+---
+
+## TASK APP-02: 홈 화면 FAB 버튼 및 네비게이션 개선 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | 홈 화면에서 링크 저장 화면으로 쉽게 이동, 저장 후 자동 복귀 |
+| **작업 유형** | 앱 |
+| **의존성** | APP-01 완료 |
+
+### 구현 내용
+
+#### 1. HomeScreen FAB 버튼 추가
+```typescript
+// FAB 버튼 컴포넌트
+<TouchableOpacity style={styles.fab} onPress={handleAddLink}>
+  <Text style={styles.fabText}>+</Text>
+</TouchableOpacity>
+
+// FAB 스타일
+fab: {
+  position: 'absolute',
+  right: 20,
+  bottom: 30,
+  width: 56,
+  height: 56,
+  borderRadius: 28,
+  backgroundColor: '#007AFF',
+  // ... shadow styles
+}
+```
+
+#### 2. useFocusEffect로 자동 새로고침
+```typescript
+import { useFocusEffect } from '@react-navigation/native';
+
+useFocusEffect(
+  useCallback(() => {
+    fetchLinks();
+  }, [fetchLinks])
+);
+```
+
+#### 3. SaveLinkScreen 저장 후 자동 복귀
+```typescript
+// 저장 성공 후 1.5초 뒤 홈으로 이동
+setTimeout(() => {
+  navigation.goBack();
+}, 1500);
+```
+
+### 테스트 결과 체크
+- [x] APP02-TC01: FAB 버튼 표시 확인
+- [x] APP02-TC02: FAB 클릭 시 SaveLink 화면 이동
+- [x] APP02-TC03: 저장 완료 후 홈 화면 자동 복귀
+- [x] APP02-TC04: 홈 화면 복귀 시 목록 자동 새로고침
+- [x] APP02-TC05: TypeScript 타입 체크 통과
+
+### 참고 파일
+- `app/src/screens/HomeScreen.tsx`
+- `app/src/screens/SaveLinkScreen.tsx`
+
+---
+
+## TASK APP-03: 링크 상세 화면 구현 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | 저장된 링크의 상세 정보 확인 및 YouTube 열기/공유 기능 |
+| **작업 유형** | 앱 |
+| **의존성** | APP-02 완료 |
+
+### 구현 내용
+
+#### 1. LinkDetailScreen 생성
+- 썸네일 이미지 (전체 너비)
+- 제목 (굵은 글씨)
+- 카테고리 배지 (파란색)
+- 요약 섹션
+- 태그 목록
+- 저장일시
+
+#### 2. 액션 버튼
+```typescript
+// YouTube에서 보기 (빨간색 버튼)
+<TouchableOpacity style={styles.primaryButton} onPress={handleOpenLink}>
+  <Text>YouTube에서 보기</Text>
+</TouchableOpacity>
+
+// 공유하기 (흰색 버튼)
+<TouchableOpacity style={styles.secondaryButton} onPress={handleShare}>
+  <Text>공유하기</Text>
+</TouchableOpacity>
+```
+
+#### 3. 네비게이션 연결
+```typescript
+// App.tsx - 라우트 추가
+<Stack.Screen name="LinkDetail" component={LinkDetailScreen} />
+
+// HomeScreen - 카드 클릭 시 이동
+<LinkCard
+  link={item}
+  onPress={() => navigation.navigate('LinkDetail', { link: item })}
+/>
+```
+
+### 테스트 결과 체크
+- [x] APP03-TC01: 상세 화면 표시 확인
+- [x] APP03-TC02: 썸네일, 제목, 요약 표시
+- [x] APP03-TC03: YouTube에서 보기 버튼 동작
+- [x] APP03-TC04: 공유하기 버튼 동작
+- [x] APP03-TC05: TypeScript 타입 체크 통과
+
+### 참고 파일
+- `app/src/screens/LinkDetailScreen.tsx` (신규)
+- `app/src/screens/HomeScreen.tsx` (수정)
+- `app/App.tsx` (수정)
+
+---
+
+## TASK APP-04: 링크 삭제 기능 (앱) ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | 앱에서 저장된 링크 삭제 기능 구현 |
+| **작업 유형** | 앱 |
+| **의존성** | APP-03 완료, BE-03 (삭제 API) 완료 |
+
+### 구현 내용
+
+#### 1. 삭제 확인 Alert
+```typescript
+const handleDelete = () => {
+  Alert.alert(
+    '링크 삭제',
+    '이 링크를 삭제하시겠습니까?\n삭제된 링크는 복구할 수 없습니다.',
+    [
+      { text: '취소', style: 'cancel' },
+      { text: '삭제', style: 'destructive', onPress: deleteLink },
+    ]
+  );
+};
+```
+
+#### 2. API 호출 및 결과 처리
+```typescript
+await linkApi.deleteLink(link.id);
+Alert.alert('삭제 완료', '링크가 삭제되었습니다.', [
+  { text: '확인', onPress: () => navigation.goBack() },
+]);
+```
+
+#### 3. 삭제 버튼 UI
+- 빨간 테두리 + 빨간 텍스트
+- 삭제 중 로딩 인디케이터 표시
+- disabled 상태 처리
+
+### 테스트 결과 체크
+- [x] APP04-TC01: 삭제 버튼 표시 확인
+- [x] APP04-TC02: 삭제 확인 Alert 표시
+- [x] APP04-TC03: 삭제 API 호출
+- [x] APP04-TC04: 삭제 완료 후 홈 화면 복귀
+- [x] APP04-TC05: TypeScript 타입 체크 통과
+
+### 참고 파일
+- `app/src/screens/LinkDetailScreen.tsx` (수정)
+
+---
+
+## TASK APP-05: Android 공유 인텐트 수신 구현 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | YouTube 앱에서 공유 시 링크 노트 앱에서 URL 수신 |
+| **작업 유형** | 앱 |
+| **의존성** | APP-04 완료 |
+
+### 구현 내용
+
+#### 1. expo-share-intent 설치
+```bash
+npm install expo-share-intent
+```
+
+#### 2. app.config.js 플러그인 설정
+```javascript
+plugins: [
+  [
+    'expo-share-intent',
+    {
+      androidIntentFilters: ['text/*'],
+    },
+  ],
+],
+```
+
+#### 3. App.tsx ShareIntentProvider 적용
+```typescript
+import { ShareIntentProvider, useShareIntent } from 'expo-share-intent';
+
+const AppNavigator = () => {
+  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
+
+  useEffect(() => {
+    if (hasShareIntent && shareIntent?.text) {
+      const url = extractYouTubeUrl(shareIntent.text);
+      if (url) {
+        navigationRef.current?.navigate('SaveLink', { url });
+        resetShareIntent();
+      }
+    }
+  }, [hasShareIntent, shareIntent]);
+  // ...
+};
+
+export default function App() {
+  return (
+    <ShareIntentProvider>
+      <AppNavigator />
+    </ShareIntentProvider>
+  );
+}
+```
+
+#### 4. SaveLinkScreen URL 파라미터 처리
+```typescript
+useEffect(() => {
+  if (route.params?.url) {
+    setUrl(route.params.url);
+  }
+}, [route.params?.url]);
+```
+
+### 테스트 결과 체크
+- [x] APP05-TC01: expo-share-intent 설치 확인
+- [x] APP05-TC02: TypeScript 타입 체크 통과
+- [x] APP05-TC03: 공유 URL 추출 로직 구현
+- [x] APP05-TC04: SaveLink 화면으로 URL 전달
+
+### 참고
+- 실제 Android 기기 테스트는 EAS Build 후 가능
+- Development Build 필요 (expo-share-intent는 네이티브 코드 포함)
+
+### 참고 파일
+- `app/App.tsx` (수정)
+- `app/app.config.js` (수정)
+- `app/src/screens/SaveLinkScreen.tsx` (수정)
+
+---
+
+## TASK APP-06: iOS 공유 익스텐션 기본 설정 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | Safari/다른 앱에서 공유 시 링크 노트 앱에서 URL 수신 (iOS) |
+| **작업 유형** | 앱 |
+| **의존성** | APP-05 완료 |
+
+### 구현 내용
+
+#### app.config.js iOS Share Extension 설정
+```javascript
+plugins: [
+  [
+    'expo-share-intent',
+    {
+      // Android 설정
+      androidIntentFilters: ['text/*'],
+      // iOS Share Extension 설정
+      iosShareExtensionName: 'LinkNoteShare',
+      iosActivationRules: {
+        NSExtensionActivationSupportsText: true,
+        NSExtensionActivationSupportsWebURLWithMaxCount: 1,
+      },
+    },
+  ],
+],
+```
+
+### iOS 활성화 규칙 설명
+- `NSExtensionActivationSupportsText`: 텍스트 공유 지원
+- `NSExtensionActivationSupportsWebURLWithMaxCount`: URL 공유 지원 (최대 1개)
+
+### 테스트 결과 체크
+- [x] APP06-TC01: app.config.js 설정 추가
+- [x] APP06-TC02: TypeScript 타입 체크 통과
+- [x] APP06-TC03: APP-05 코드 재사용 확인
+
+### 참고
+- 실제 테스트는 **EAS Build** 필요
+- iOS Share Extension은 별도 타겟으로 빌드됨
+- expo-share-intent가 자동으로 Share Extension 생성
+
+### 참고 파일
+- `app/app.config.js` (수정)
+
+---
+
 ## Version History
 
 | Version | Date | Changes |
@@ -621,3 +1081,389 @@ async def delete_link(link_id: str):
 | 1.0 | 2024-01-19 | Initial archive creation with ENV-01 through AI-01 |
 | 1.1 | 2024-01-20 | Added AI-02, AI-03 completion documentation |
 | 1.2 | 2025-01-21 | Added BE-03 completion documentation |
+| 1.3 | 2025-02-02 | Added BE-04 completion documentation |
+| 1.4 | 2025-02-02 | Added APP-01 completion documentation |
+| 1.5 | 2025-02-02 | Added APP-02 completion documentation |
+| 1.6 | 2025-02-02 | Added APP-03 completion documentation |
+| 1.7 | 2025-02-02 | Added APP-04 completion documentation |
+| 1.8 | 2025-02-02 | Added APP-05 completion documentation |
+| 1.9 | 2025-02-02 | Added APP-06 completion documentation |
+| 2.0 | 2025-02-03 | Added APP-07 completion documentation |
+| 2.1 | 2025-02-03 | Added APP-08 completion documentation |
+| 2.2 | 2025-02-03 | Added APP-09 completion documentation |
+| 2.3 | 2025-02-03 | Added SERVER-02 completion documentation |
+| 2.4 | 2025-02-03 | Added APP-10 completion documentation |
+| 2.5 | 2025-02-03 | Added APP-11 completion documentation |
+
+---
+
+## TASK APP-11: EAS Build 설정 및 APK/IPA 빌드 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | EAS Build 설정 완성 및 빌드 가이드 작성 |
+| **작업 유형** | 앱 |
+| **의존성** | APP-10 완료 |
+
+### 구현 내용
+
+#### 1. eas.json 빌드 프로파일
+| 프로파일 | 용도 | 특징 |
+|---------|------|------|
+| `base` | 공통 설정 | Node 18.18.0, 환경 변수 |
+| `development` | 개발용 | Dev Client, localhost API |
+| `preview` | 내부 테스트 | APK 빌드, production API |
+| `production` | 스토어 배포 | 자동 버전 증가, production API |
+
+#### 2. package.json 빌드 스크립트
+```json
+{
+  "build:dev": "eas build --profile development --platform all",
+  "build:dev:android": "eas build --profile development --platform android",
+  "build:dev:ios": "eas build --profile development --platform ios",
+  "build:preview": "eas build --profile preview --platform all",
+  "build:preview:android": "eas build --profile preview --platform android",
+  "build:preview:ios": "eas build --profile preview --platform ios",
+  "build:prod": "eas build --profile production --platform all",
+  "build:prod:android": "eas build --profile production --platform android",
+  "build:prod:ios": "eas build --profile production --platform ios"
+}
+```
+
+#### 3. BUILD.md 가이드
+- EAS CLI 설치 방법
+- 빌드 명령어 모음
+- iOS/Android 요구사항
+- 문제 해결 가이드
+
+### 테스트 결과 체크
+- [x] APP11-TC01: eas.json 프로파일 완성
+- [x] APP11-TC02: package.json 스크립트 추가
+- [x] APP11-TC03: BUILD.md 가이드 작성
+- [x] APP11-TC04: TypeScript 타입 체크 통과
+
+### 참고 파일
+- `app/eas.json` (수정)
+- `app/package.json` (수정)
+- `app/BUILD.md` (신규)
+
+---
+
+## TASK APP-10: 프로덕션 API URL 설정 및 빌드 테스트 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | 프로덕션 환경 분리 및 EAS 빌드 설정 |
+| **작업 유형** | 앱 |
+| **의존성** | SERVER-02 완료 |
+
+### 구현 내용
+
+#### 1. 환경별 설정 파일
+| 파일 | 용도 |
+|------|------|
+| `.env.development` | 개발 환경 (localhost) |
+| `.env.production` | 프로덕션 환경 |
+| `.env.example` | 환경 변수 예시 |
+
+#### 2. eas.json 빌드 프로파일
+```json
+{
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "env": { "API_BASE_URL": "http://localhost:8000/api" }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": { "API_BASE_URL": "https://linknote-api.up.railway.app/api" }
+    },
+    "production": {
+      "env": { "API_BASE_URL": "https://linknote-api.up.railway.app/api" }
+    }
+  }
+}
+```
+
+#### 3. app.config.js 업데이트
+- APP_VARIANT에 따른 앱 이름 변경
+- EAS project ID 설정 추가
+
+### 테스트 결과 체크
+- [x] APP10-TC01: 환경별 .env 파일 생성
+- [x] APP10-TC02: eas.json 생성
+- [x] APP10-TC03: app.config.js 업데이트
+- [x] APP10-TC04: TypeScript 타입 체크 통과
+- [x] APP10-TC05: Expo config 검증 통과
+
+### 참고 파일
+- `app/.env.development` (신규)
+- `app/.env.production` (신규)
+- `app/eas.json` (신규)
+- `app/app.config.js` (수정)
+- `app/.env.example` (수정)
+
+---
+
+## TASK SERVER-02: 서버 배포 (Railway/Render) ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | FastAPI 서버 클라우드 배포 설정 |
+| **작업 유형** | 서버 |
+| **의존성** | APP-09 완료 |
+
+### 구현 내용
+
+#### 1. 생성된 파일
+| 파일 | 용도 |
+|------|------|
+| `Procfile` | 서버 시작 커맨드 |
+| `runtime.txt` | Python 버전 (3.11.7) |
+| `railway.json` | Railway 플랫폼 설정 |
+| `render.yaml` | Render 플랫폼 설정 |
+| `DEPLOY.md` | 배포 가이드 문서 |
+| `.gitignore` | Git 제외 파일 |
+
+#### 2. Procfile
+```
+web: uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+#### 3. railway.json
+```json
+{
+  "build": { "builder": "NIXPACKS" },
+  "deploy": {
+    "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT",
+    "healthcheckPath": "/health",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}
+```
+
+#### 4. 필요한 환경 변수
+- `SUPABASE_URL`
+- `SUPABASE_KEY`
+- `OPENAI_API_KEY`
+
+### 테스트 결과 체크
+- [x] SERVER02-TC01: Procfile 생성
+- [x] SERVER02-TC02: runtime.txt 생성
+- [x] SERVER02-TC03: railway.json 생성
+- [x] SERVER02-TC04: render.yaml 생성
+- [x] SERVER02-TC05: DEPLOY.md 가이드 작성
+- [x] SERVER02-TC06: .gitignore 생성
+
+### 참고 파일
+- `server/Procfile` (신규)
+- `server/runtime.txt` (신규)
+- `server/railway.json` (신규)
+- `server/render.yaml` (신규)
+- `server/DEPLOY.md` (신규)
+- `server/.gitignore` (신규)
+
+---
+
+## TASK APP-09: 앱 아이콘 및 스플래시 화면 설정 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | 커스텀 앱 아이콘 및 스플래시 화면 설정 |
+| **작업 유형** | 앱 |
+| **의존성** | APP-08 완료 |
+
+### 구현 내용
+
+#### 1. 아이콘 생성 스크립트 (scripts/generate-icons.js)
+- Jimp 라이브러리로 프로그래밍 방식 아이콘 생성
+- 북마크 + 체인링크 디자인 컨셉
+
+#### 2. 생성된 파일
+| 파일 | 크기 | 용도 |
+|------|------|------|
+| `icon.png` | 1024x1024 | iOS/일반 앱 아이콘 |
+| `adaptive-icon.png` | 1024x1024 | Android Adaptive Icon |
+| `splash-icon.png` | 200x200 | 스플래시 화면 아이콘 |
+| `favicon.png` | 48x48 | 웹 파비콘 |
+
+#### 3. 디자인 사양
+- 배경색: #007AFF (프라이머리 블루)
+- 아이콘: 북마크 모양 + 체인 링크 심볼
+- 접힌 모서리 효과로 입체감 표현
+- Adaptive Icon: 투명 배경 + foreground 이미지
+
+### 테스트 결과 체크
+- [x] APP09-TC01: 아이콘 생성 스크립트 작성
+- [x] APP09-TC02: icon.png 생성 (1024x1024)
+- [x] APP09-TC03: adaptive-icon.png 생성
+- [x] APP09-TC04: splash-icon.png 생성
+- [x] APP09-TC05: favicon.png 생성
+
+### 참고 파일
+- `app/scripts/generate-icons.js` (신규)
+- `app/assets/icon.png` (갱신)
+- `app/assets/adaptive-icon.png` (갱신)
+- `app/assets/splash-icon.png` (갱신)
+- `app/assets/favicon.png` (갱신)
+
+---
+
+## TASK APP-08: 로딩 상태 및 스켈레톤 UI 구현 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | 로딩 중 스켈레톤 UI로 사용자 경험 향상 |
+| **작업 유형** | 앱 |
+| **의존성** | APP-07 완료 |
+
+### 구현 내용
+
+#### 1. SkeletonCard 컴포넌트 (src/components/SkeletonCard.tsx)
+```typescript
+// Shimmer 애니메이션
+const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+useEffect(() => {
+  const shimmerLoop = Animated.loop(
+    Animated.sequence([
+      Animated.timing(shimmerAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shimmerAnim, {
+        toValue: 0,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+    ])
+  );
+  shimmerLoop.start();
+  return () => shimmerLoop.stop();
+}, [shimmerAnim]);
+
+const opacity = shimmerAnim.interpolate({
+  inputRange: [0, 1],
+  outputRange: [0.3, 0.7],
+});
+```
+
+#### 2. SkeletonList 컴포넌트
+```typescript
+export const SkeletonList: React.FC<{ count?: number }> = ({ count = 3 }) => {
+  return (
+    <View style={styles.listContainer}>
+      {Array.from({ length: count }).map((_, index) => (
+        <SkeletonCard key={index} />
+      ))}
+    </View>
+  );
+};
+```
+
+#### 3. HomeScreen 적용
+```typescript
+if (loading) {
+  return <SkeletonList count={3} />;
+}
+```
+
+### 스켈레톤 구조
+- 썸네일: 100% x 180px
+- 제목: 2줄 (90%, 60%)
+- 요약: 2줄 (100%, 80%)
+- 태그: 3개 (60px, 60px, 45px)
+- 날짜: 80px
+
+### 테스트 결과 체크
+- [x] APP08-TC01: SkeletonCard 컴포넌트 생성
+- [x] APP08-TC02: Shimmer 애니메이션 구현
+- [x] APP08-TC03: HomeScreen 적용
+- [x] APP08-TC04: TypeScript 타입 체크 통과
+
+### 참고 파일
+- `app/src/components/SkeletonCard.tsx` (신규)
+- `app/src/screens/HomeScreen.tsx` (수정)
+
+---
+
+## TASK APP-07: 에러 처리 및 토스트 메시지 시스템 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | 사용자 친화적인 피드백 시스템 구현 (Toast 메시지) |
+| **작업 유형** | 앱 |
+| **의존성** | APP-06 완료 |
+
+### 구현 내용
+
+#### 1. Toast 유틸리티 (src/utils/toast.ts)
+```typescript
+import Toast from 'react-native-toast-message';
+
+export const showToast = {
+  success: (message: string, description?: string) => {
+    Toast.show({
+      type: 'success',
+      text1: message,
+      text2: description,
+      position: 'bottom',
+      visibilityTime: 3000,
+    });
+  },
+
+  error: (message: string, description?: string) => {
+    Toast.show({
+      type: 'error',
+      text1: message,
+      text2: description,
+      position: 'bottom',
+      visibilityTime: 4000,
+    });
+  },
+
+  info: (message: string, description?: string) => {
+    Toast.show({
+      type: 'info',
+      text1: message,
+      text2: description,
+      position: 'bottom',
+      visibilityTime: 3000,
+    });
+  },
+};
+```
+
+#### 2. SaveLinkScreen 수정
+- URL 미입력 시: `showToast.error('URL을 입력해주세요.')`
+- 저장 성공 시: `showToast.success('저장 완료!', result.title)`
+- 저장 실패 시: `showToast.error('링크 저장 실패', message)`
+
+#### 3. LinkDetailScreen 수정
+- 삭제 확인: Alert 유지 (사용자 확인 필요)
+- 삭제 성공 시: `showToast.success('삭제 완료', '링크가 삭제되었습니다.')`
+- 삭제 실패 시: `showToast.error('삭제 실패', message)`
+
+### 설계 결정
+- **Toast**: 비침투적 피드백 (성공/에러/정보 메시지)
+- **Alert**: 사용자 확인이 필요한 중요 액션 (삭제 확인)
+- **position: 'bottom'**: 사용자 시야 방해 최소화
+- **visibilityTime**: 에러(4초) > 성공/정보(3초)
+
+### 테스트 결과 체크
+- [x] APP07-TC01: Toast 유틸리티 생성
+- [x] APP07-TC02: SaveLinkScreen Alert → Toast 변경
+- [x] APP07-TC03: LinkDetailScreen Alert → Toast 변경
+- [x] APP07-TC04: TypeScript 타입 체크 통과
+
+### 참고 파일
+- `app/src/utils/toast.ts` (신규)
+- `app/src/screens/SaveLinkScreen.tsx` (수정)
+- `app/src/screens/LinkDetailScreen.tsx` (수정)

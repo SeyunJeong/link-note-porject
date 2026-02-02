@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { Link, LinkListResponse } from '../types/link';
+import { config } from '../config';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = config.apiBaseUrl;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -27,6 +28,10 @@ export const linkApi = {
   getLink: async (id: string): Promise<Link> => {
     const response = await api.get<Link>(`/links/${id}`);
     return response.data;
+  },
+
+  deleteLink: async (id: string): Promise<void> => {
+    await api.delete(`/links/${id}`);
   },
 };
 

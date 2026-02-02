@@ -1,17 +1,24 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   FlatList,
   StyleSheet,
   Text,
   RefreshControl,
-  ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinkCard } from '../components/LinkCard';
+import { SkeletonList } from '../components/SkeletonCard';
 import { linkApi } from '../services/api';
 import { Link } from '../types/link';
+import { RootStackParamList } from '../../App';
+
+type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export const HomeScreen: React.FC = () => {
+  const navigation = useNavigation<HomeScreenNavigationProp>();
   const [links, setLinks] = useState<Link[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -31,9 +38,12 @@ export const HomeScreen: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchLinks();
-  }, [fetchLinks]);
+  // 화면이 포커스될 때마다 목록 새로고침
+  useFocusEffect(
+    useCallback(() => {
+      fetchLinks();
+    }, [fetchLinks])
+  );
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -41,11 +51,7 @@ export const HomeScreen: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
+    return <SkeletonList count={3} />;
   }
 
   if (error) {
@@ -61,23 +67,38 @@ export const HomeScreen: React.FC = () => {
       <View style={styles.centerContainer}>
         <Text style={styles.emptyText}>저장된 링크가 없습니다.</Text>
         <Text style={styles.emptySubText}>
-          유튜브에서 공유 버튼을 눌러 링크를 저장해보세요.
+          + 버튼을 눌러 링크를 저장해보세요.
         </Text>
+        <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('SaveLink')}>
+          <Text style={styles.fabText}>+</Text>
+        </TouchableOpacity>
       </View>
     );
   }
+
+  const handleAddLink = () => {
+    navigation.navigate('SaveLink');
+  };
 
   return (
     <View style={styles.container}>
       <FlatList
         data={links}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <LinkCard link={item} />}
+        renderItem={({ item }) => (
+          <LinkCard
+            link={item}
+            onPress={() => navigation.navigate('LinkDetail', { link: item })}
+          />
+        )}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       />
+      <TouchableOpacity style={styles.fab} onPress={handleAddLink}>
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -112,5 +133,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  fabText: {
+    fontSize: 28,
+    color: '#fff',
+    fontWeight: '300',
+    marginTop: -2,
   },
 });

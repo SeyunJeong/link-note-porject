@@ -7,30 +7,30 @@
 
 ## 작업 현황 체크리스트
 
-| 순서 | 태스크 ID | 태스크명 | 상태 | 테스트 | 의존성 |
-|------|-----------|----------|------|--------|--------|
-| 1 | ENV-01 | 서버 환경 변수 및 설정 구성 | ✅ 완료 | ✅ | 없음 |
-| 2 | DB-01 | Supabase 프로젝트 생성 및 테이블 설정 | ✅ 완료 | ✅ | ENV-01 |
-| 3 | SERVER-01 | 서버 로컬 실행 및 기본 API 테스트 | ✅ 완료 | ✅ | DB-01 |
-| 4 | BE-01 | YouTube 메타데이터 추출 개선 | ✅ 완료 | ✅ | SERVER-01 |
-| 5 | BE-02 | 서버 에러 핸들링 및 로깅 시스템 | ✅ 완료 | ✅ | BE-02 |
-| 6 | AI-01 | AI 요약 프롬프트 최적화 | ✅ 완료 | ✅ | BE-02 |
-| 7 | AI-02 | AI 태그 및 카테고리 분류 개선 | ✅ 완료 | ✅ | AI-01 |
-| 8 | AI-03 | AI 요청 실패 시 폴백 처리 | ✅ 완료 | ✅ | AI-02 |
-| 9 | BE-03 | 링크 삭제 API 구현 | ✅ 완료 | ✅ | AI-03 |
-| 10 | BE-04 | 링크 중복 저장 방지 | ⬜ 대기 | ⬜ | BE-03 |
-| 11 | APP-01 | 앱 환경 변수 및 API 연결 설정 | ⬜ 대기 | ⬜ | BE-04 |
-| 12 | APP-02 | 홈 화면 FAB 버튼 및 네비게이션 개선 | ⬜ 대기 | ⬜ | APP-01 |
-| 13 | APP-03 | 링크 상세 화면 구현 | ⬜ 대기 | ⬜ | APP-02 |
-| 14 | APP-04 | 링크 삭제 기능 (앱) | ⬜ 대기 | ⬜ | APP-03 |
-| 15 | APP-05 | Android 공유 인텐트 수신 구현 | ⬜ 대기 | ⬜ | APP-04 |
-| 16 | APP-06 | iOS 공유 익스텐션 기본 설정 | ⬜ 대기 | ⬜ | APP-05 |
-| 17 | APP-07 | 에러 처리 및 토스트 메시지 시스템 | ⬜ 대기 | ⬜ | APP-06 |
-| 18 | APP-08 | 로딩 상태 및 스켈레톤 UI 구현 | ⬜ 대기 | ⬜ | APP-07 |
-| 19 | APP-09 | 앱 아이콘 및 스플래시 화면 설정 | ⬜ 대기 | ⬜ | APP-08 |
-| 20 | SERVER-02 | 서버 배포 (Railway/Render) | ⬜ 대기 | ⬜ | APP-09 |
-| 21 | APP-10 | 프로덕션 API URL 설정 및 빌드 테스트 | ⬜ 대기 | ⬜ | SERVER-02 |
-| 22 | APP-11 | EAS Build 설정 및 APK/IPA 빌드 | ⬜ 대기 | ⬜ | APP-10 |
+| 순서 | 태스크 ID | 태스크명 | 상태 | 테스트 | 노션 | 의존성 |
+|------|-----------|----------|------|--------|------|--------|
+| 1 | ENV-01 | 서버 환경 변수 및 설정 구성 | ✅ 완료 | ✅ | ✅ | 없음 |
+| 2 | DB-01 | Supabase 프로젝트 생성 및 테이블 설정 | ✅ 완료 | ✅ | ✅ | ENV-01 |
+| 3 | SERVER-01 | 서버 로컬 실행 및 기본 API 테스트 | ✅ 완료 | ✅ | ✅ | DB-01 |
+| 4 | BE-01 | YouTube 메타데이터 추출 개선 | ✅ 완료 | ✅ | ✅ | SERVER-01 |
+| 5 | BE-02 | 서버 에러 핸들링 및 로깅 시스템 | ✅ 완료 | ✅ | ✅ | BE-02 |
+| 6 | AI-01 | AI 요약 프롬프트 최적화 | ✅ 완료 | ✅ | ✅ | BE-02 |
+| 7 | AI-02 | AI 태그 및 카테고리 분류 개선 | ✅ 완료 | ✅ | ✅ | AI-01 |
+| 8 | AI-03 | AI 요청 실패 시 폴백 처리 | ✅ 완료 | ✅ | ✅ | AI-02 |
+| 9 | BE-03 | 링크 삭제 API 구현 | ✅ 완료 | ✅ | ✅ | AI-03 |
+| 10 | BE-04 | 링크 중복 저장 방지 | ✅ 완료 | ✅ | ✅ | BE-03 |
+| 11 | APP-01 | 앱 환경 변수 및 API 연결 설정 | ✅ 완료 | ✅ | ✅ | BE-04 |
+| 12 | APP-02 | 홈 화면 FAB 버튼 및 네비게이션 개선 | ✅ 완료 | ✅ | ✅ | APP-01 |
+| 13 | APP-03 | 링크 상세 화면 구현 | ✅ 완료 | ✅ | ✅ | APP-02 |
+| 14 | APP-04 | 링크 삭제 기능 (앱) | ✅ 완료 | ✅ | ✅ | APP-03 |
+| 15 | APP-05 | Android 공유 인텐트 수신 구현 | ✅ 완료 | ✅ | ✅ | APP-04 |
+| 16 | APP-06 | iOS 공유 익스텐션 기본 설정 | ✅ 완료 | ✅ | ✅ | APP-05 |
+| 17 | APP-07 | 에러 처리 및 토스트 메시지 시스템 | ✅ 완료 | ✅ | ✅ | APP-06 |
+| 18 | APP-08 | 로딩 상태 및 스켈레톤 UI 구현 | ✅ 완료 | ✅ | ✅ | APP-07 |
+| 19 | APP-09 | 앱 아이콘 및 스플래시 화면 설정 | ✅ 완료 | ✅ | ✅ | APP-08 |
+| 20 | SERVER-02 | 서버 배포 (Railway/Render) | ✅ 완료 | ✅ | ✅ | APP-09 |
+| 21 | APP-10 | 프로덕션 API URL 설정 및 빌드 테스트 | ✅ 완료 | ✅ | ✅ | SERVER-02 |
+| 22 | APP-11 | EAS Build 설정 및 APK/IPA 빌드 | ✅ 완료 | ✅ | ✅ | APP-10 |
 
 **상태 범례**: ⬜ 대기 | 🔄 진행중 | ✅ 완료 | ❌ 실패
 
@@ -95,112 +95,60 @@
   - UUID 형식 검증 추가 (400 에러)
   - 존재하지 않는 링크 처리 (404 에러)
   - 3개 테스트 케이스 통과
+- **BE-04**: 링크 중복 저장 방지 완료
+  - `database.py`에 `get_link_by_url()` 메서드 추가
+  - URL 정규화 후 중복 체크
+  - 409 Conflict 응답 (X-Existing-Link-Id 헤더 포함)
+  - 8개 테스트 케이스 통과
 
 ---
 
-# 다음 작업: BE-04
-
----
-
-## TASK BE-04: 링크 중복 저장 방지
-
-### 개요
-| 항목 | 내용 |
-|------|------|
-| **목적** | 동일한 URL 중복 저장 방지 |
-| **작업 유형** | 백엔드 |
-| **의존성** | BE-03 완료 |
-
-### 현재 상태
-- 중복 체크 없이 저장
-- 같은 URL 여러 번 저장 가능
-- `normalize_youtube_url` 함수는 BE-01에서 이미 구현됨
-
-### 작업 내용
-
-#### 1. 중복 체크 메서드
-```python
-# server/app/services/database.py
-
-async def get_link_by_url(self, url: str) -> Optional[dict]:
-    result = self.client.table('links').select('*').eq('url', url).execute()
-    return result.data[0] if result.data else None
-```
-
-#### 2. 저장 로직 수정
-```python
-# server/app/api/links.py
-
-@router.post("/save", response_model=LinkResponse)
-async def save_link(link: LinkCreate):
-    # 1. URL 정규화
-    normalized_url = youtube_service.normalize_youtube_url(link.url)
-
-    # 2. 중복 체크
-    existing = await db_service.get_link_by_url(normalized_url)
-    if existing:
-        raise HTTPException(
-            status_code=409,
-            detail="이미 저장된 링크입니다.",
-            headers={"X-Existing-Link-Id": existing['id']}
-        )
-
-    # 3. 저장 진행
-    ...
-```
-
-### 테스트 수행
-
-#### 테스트 케이스
-| TC-ID | 테스트 항목 | 입력/조건 | 예상 결과 |
-|-------|-------------|-----------|-----------|
-| BE04-TC01 | 최초 저장 | 새 URL | 201/200, 저장 성공 |
-| BE04-TC02 | 중복 저장 시도 | 동일 URL | 409 Conflict |
-| BE04-TC03 | 단축 URL 중복 | youtu.be 형식으로 중복 | 409 Conflict |
-| BE04-TC04 | URL 정규화 | 다른 형식 같은 영상 | 동일하게 처리 |
-
-#### 테스트 실행 방법
-```bash
-# TC01: 최초 저장
-curl -X POST http://localhost:8000/api/links/save \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}'
-
-# TC02: 중복 저장 시도
-curl -X POST http://localhost:8000/api/links/save \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}'
-# 응답: 409 Conflict
-
-# TC03: 단축 URL 중복
-curl -X POST http://localhost:8000/api/links/save \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://youtu.be/dQw4w9WgXcQ"}'
-# 응답: 409 Conflict (정규화 후 같은 URL)
-```
-
-### 테스트 결과 체크
-- [ ] BE04-TC01: 최초 저장 성공
-- [ ] BE04-TC02: 중복 시 409 에러
-- [ ] BE04-TC03: 단축 URL 중복 감지
-- [ ] BE04-TC04: URL 정규화 동작 확인
-
-### 완료 조건
-- [ ] 중복 체크 로직 구현
-- [ ] 409 Conflict 응답 구현
-- [ ] 모든 테스트 케이스 통과
-
-### 참고 파일
-- `server/app/api/links.py`
-- `server/app/services/youtube.py`
-- `server/app/services/database.py`
+# 다음 작업: APP-07
 
 ---
 
 # PHASE 4: 앱 기능 구현
 
-> APP-01 ~ APP-11 태스크는 백엔드 작업 완료 후 진행됩니다.
-> 각 태스크의 상세 내용은 작업 시점에 추가됩니다.
+### APP-01 완료 요약
+- `app.config.js` 생성 (환경 변수 노출)
+- `src/config/index.ts` 생성 (환경 변수 접근)
+- `src/services/api.ts` 수정 (환경 변수 사용, deleteLink 추가)
+- `.env` 파일 생성
+- TypeScript 타입 체크 통과
+
+### APP-02 완료 요약
+- HomeScreen에 FAB 버튼 추가 (+ 버튼)
+- FAB 클릭 시 SaveLink 화면으로 이동
+- `useFocusEffect` 사용하여 화면 포커스 시 목록 새로고침
+- 저장 완료 후 1.5초 뒤 자동으로 홈 화면 복귀
+- 빈 상태 화면에도 FAB 표시
+
+### APP-03 완료 요약
+- `LinkDetailScreen.tsx` 생성 (링크 상세 화면)
+- 썸네일, 제목, 카테고리, 요약, 태그, 저장일 표시
+- "YouTube에서 보기" 버튼 (빨간색)
+- "공유하기" 버튼 (Share API 사용)
+- LinkCard 클릭 시 상세 화면으로 이동
+
+### APP-04 완료 요약
+- LinkDetailScreen에 삭제 버튼 추가 (빨간 테두리)
+- 삭제 확인 Alert 표시
+- linkApi.deleteLink() 호출
+- 삭제 완료 후 홈 화면으로 자동 복귀
+- 삭제 중 로딩 인디케이터 표시
+
+### APP-05 완료 요약
+- `expo-share-intent` 라이브러리 설치
+- app.config.js에 플러그인 설정
+- App.tsx에 ShareIntentProvider 래핑
+- YouTube URL 자동 추출 및 SaveLink 화면으로 전달
+- SaveLinkScreen에서 params URL 변경 감지
+
+### APP-06 완료 요약
+- iOS Share Extension 설정 추가 (`iosShareExtensionName: 'LinkNoteShare'`)
+- iOS 활성화 규칙 설정 (텍스트 및 URL 지원)
+- APP-05에서 구현한 코드가 iOS에서도 동일하게 작동
+- 실제 테스트는 EAS Build 후 가능
 
 ### 간략 목록
 
