@@ -21,6 +21,9 @@ app/*.mobileprovision
 app/*.orig.*
 app/web-build/
 
+# Claude Code
+.claude/
+
 # IDE
 .idea/
 .vscode/
