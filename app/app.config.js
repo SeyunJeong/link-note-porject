@@ -58,6 +58,12 @@ export default {
       favicon: './assets/favicon.png',
     },
     scheme: 'linknote',
+    updates: {
+      url: 'https://u.expo.dev/532a54c8-b257-4941-8f3e-e2b3b7a417a1',
+    },
+    runtimeVersion: {
+      policy: 'appVersion',
+    },
     extra: {
       apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:8000/api',
       eas: {
