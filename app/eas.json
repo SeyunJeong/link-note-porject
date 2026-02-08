@@ -32,7 +32,7 @@
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "API_BASE_URL": "https://linknote-api.up.railway.app/api",
+        "API_BASE_URL": "https://link-note-porject-production.up.railway.app/api",
         "APP_VARIANT": "preview"
       },
       "android": {
@@ -47,7 +47,7 @@
       "channel": "production",
       "autoIncrement": true,
       "env": {
-        "API_BASE_URL": "https://linknote-api.up.railway.app/api",
+        "API_BASE_URL": "https://link-note-porject-production.up.railway.app/api",
         "APP_VARIANT": "production"
       },
       "android": {

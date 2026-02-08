@@ -61,22 +61,21 @@ export default {
     extra: {
       apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:8000/api',
       eas: {
-        projectId: 'your-eas-project-id',
+        projectId: '532a54c8-b257-4941-8f3e-e2b3b7a417a1',
       },
     },
-    // Expo Go 테스트 시 plugins 비활성화 (Development Build에서만 사용)
-    // plugins: [
-    //   [
-    //     'expo-share-intent',
-    //     {
-    //       androidIntentFilters: ['text/*'],
-    //       iosShareExtensionName: 'LinkNoteShare',
-    //       iosActivationRules: {
-    //         NSExtensionActivationSupportsText: true,
-    //         NSExtensionActivationSupportsWebURLWithMaxCount: 1,
-    //       },
-    //     },
-    //   ],
-    // ],
+    plugins: [
+      [
+        'expo-share-intent',
+        {
+          androidIntentFilters: ['text/*'],
+          iosShareExtensionName: 'LinkNoteShare',
+          iosActivationRules: {
+            NSExtensionActivationSupportsText: true,
+            NSExtensionActivationSupportsWebURLWithMaxCount: 1,
+          },
+        },
+      ],
+    ],
   },
 };

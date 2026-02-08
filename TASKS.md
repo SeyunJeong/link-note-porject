@@ -34,9 +34,9 @@
 
 | | | | | | | |
 | **PHASE 5: 실기기 테스트 배포** | | | | | | |
-| 23 | DEPLOY-01 | GitHub 푸시 및 서버 실제 배포 | ⬜ 대기 | ⬜ | ⬜ | APP-11 |
-| 24 | DEPLOY-02 | Expo 계정 및 EAS 프로젝트 설정 | ⬜ 대기 | ⬜ | ⬜ | DEPLOY-01 |
-| 25 | DEPLOY-03 | 빌드 전 코드 수정 (플러그인 활성화 등) | ⬜ 대기 | ⬜ | ⬜ | DEPLOY-02 |
+| 23 | DEPLOY-01 | GitHub 푸시 및 서버 실제 배포 | ✅ 완료 | ✅ | ⬜ | APP-11 |
+| 24 | DEPLOY-02 | Expo 계정 및 EAS 프로젝트 설정 | ✅ 완료 | ✅ | ⬜ | DEPLOY-01 |
+| 25 | DEPLOY-03 | 빌드 전 코드 수정 (플러그인 활성화 등) | ✅ 완료 | ✅ | ⬜ | DEPLOY-02 |
 | 26 | DEPLOY-04 | Android APK 빌드 (EAS Build) | ⬜ 대기 | ⬜ | ⬜ | DEPLOY-03 |
 | 27 | DEPLOY-05 | 스마트폰 설치 및 전체 기능 테스트 | ⬜ 대기 | ⬜ | ⬜ | DEPLOY-04 |
 
