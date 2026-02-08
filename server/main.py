@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.api.links import router as links_router
 from app.core.logging import setup_logging, get_logger
-from app.core.exceptions import LinkNoteException, DuplicateError
+from app.core.exceptions import LinkNoteException, DuplicateError, AuthenticationError
 
 # 로깅 초기화
 setup_logging()
@@ -22,6 +22,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# 인증 예외 핸들러
+@app.exception_handler(AuthenticationError)
+async def authentication_exception_handler(request: Request, exc: AuthenticationError):
+    return JSONResponse(
+        status_code=401,
+        content={
+            "detail": exc.message,
+            "type": exc.error_type
+        },
+        headers={"WWW-Authenticate": "Bearer"}
+    )
 
 
 # 전역 예외 핸들러

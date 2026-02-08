@@ -31,6 +31,12 @@
 | SERVER-02 | 서버 배포 (Railway/Render) | 2025-02-03 |
 | APP-10 | 프로덕션 API URL 설정 및 빌드 테스트 | 2025-02-03 |
 | APP-11 | EAS Build 설정 및 APK/IPA 빌드 | 2025-02-03 |
+| DEPLOY-01 | GitHub 푸시 및 서버 실제 배포 | 2026-02-08 |
+| DEPLOY-02 | Expo 계정 및 EAS 프로젝트 설정 | 2026-02-08 |
+| DEPLOY-03 | 빌드 전 코드 수정 (플러그인 활성화 등) | 2026-02-08 |
+| DEPLOY-04 | Android APK 빌드 (EAS Build) | 2026-02-08 |
+| DEPLOY-05 | 스마트폰 설치 및 전체 기능 테스트 | 2026-02-08 |
+| AUTH-01 | Supabase Auth 스키마 + 서버 인증 미들웨어 | 2026-02-08 |
 
 ---
 
@@ -1094,6 +1100,8 @@ plugins: [
 | 2.3 | 2025-02-03 | Added SERVER-02 completion documentation |
 | 2.4 | 2025-02-03 | Added APP-10 completion documentation |
 | 2.5 | 2025-02-03 | Added APP-11 completion documentation |
+| 3.0 | 2026-02-08 | Added DEPLOY-01~05 (PHASE 5) completion documentation |
+| 3.1 | 2026-02-08 | Added AUTH-01 (PHASE 6) completion documentation |
 
 ---
 
@@ -1467,3 +1475,342 @@ export const showToast = {
 - `app/src/utils/toast.ts` (신규)
 - `app/src/screens/SaveLinkScreen.tsx` (수정)
 - `app/src/screens/LinkDetailScreen.tsx` (수정)
+
+---
+
+# PHASE 5: 실기기 테스트 배포
+
+---
+
+## TASK DEPLOY-01: GitHub 푸시 및 서버 실제 배포 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | 백엔드 서버를 클라우드에 실제 배포하여 스마트폰에서 접근 가능하게 함 |
+| **작업 유형** | 배포 |
+| **의존성** | APP-11 완료 |
+
+### 구현 내용
+
+#### 1. GitHub 저장소 코드 푸시
+- 전체 프로젝트 코드를 GitHub에 푸시 완료
+
+#### 2. Railway 클라우드 배포
+- 플랫폼: Railway
+- Root Directory: `server`
+- 빌드 방식: Railpack (자동 감지)
+- 서버 URL: `https://linknote-api.up.railway.app`
+
+#### 3. 환경 변수 설정
+| 변수명 | 용도 |
+|--------|------|
+| `SUPABASE_URL` | Supabase 프로젝트 URL |
+| `SUPABASE_KEY` | Supabase anon key |
+| `OPENAI_API_KEY` | OpenAI API 키 |
+
+### 테스트 결과 체크
+- [x] DP01-TC01: 헬스 체크 (`/health`) 정상 응답
+- [x] DP01-TC02: API 루트 (`/`) 서비스 정보 JSON 반환
+- [x] DP01-TC03: 링크 저장 POST 요청 정상 동작
+- [x] DP01-TC04: 링크 목록 조회 정상 동작
+
+### 트러블슈팅
+- `railway.json`에서 NIXPACKS 빌더 명시 제거 → Railpack 자동 호환 적용
+
+### 참고 파일
+- `server/railway.json` (수정)
+- `server/Procfile`
+- `server/requirements.txt`
+
+---
+
+## TASK DEPLOY-02: Expo 계정 및 EAS 프로젝트 설정 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | EAS Build를 사용하기 위한 Expo 계정 및 프로젝트 초기화 |
+| **작업 유형** | 설정 |
+| **의존성** | DEPLOY-01 완료 |
+
+### 구현 내용
+
+#### 1. EAS CLI 설치 및 로그인
+```bash
+npm install -g eas-cli
+eas login
+```
+
+#### 2. EAS 프로젝트 초기화
+```bash
+eas init
+eas project:info
+```
+- `eas init` 실행 시 자동으로 `app.config.js`의 `eas.projectId` 업데이트
+
+### 테스트 결과 체크
+- [x] DP02-TC01: `eas whoami` - 계정 이름 정상 출력
+- [x] DP02-TC02: `eas project:info` - 프로젝트 ID 정상 출력
+
+---
+
+## TASK DEPLOY-03: 빌드 전 코드 수정 (플러그인 활성화 등) ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | EAS Build 전 필수 코드 수정 (주석 해제, ID 설정 등) |
+| **작업 유형** | 코드 수정 |
+| **의존성** | DEPLOY-02 완료 |
+
+### 구현 내용
+
+#### 1. app.config.js 수정
+- EAS Project ID 실제 값으로 교체
+- `expo-share-intent` 플러그인 주석 해제 (Expo Go → EAS Build 전환)
+- `ShareIntentProvider` 활성화
+
+#### 2. expo-share-intent 플러그인 설정
+```javascript
+plugins: [
+  [
+    'expo-share-intent',
+    {
+      androidIntentFilters: ['text/*'],
+      iosShareExtensionName: 'LinkNoteShare',
+      iosActivationRules: {
+        NSExtensionActivationSupportsText: true,
+        NSExtensionActivationSupportsWebURLWithMaxCount: 1,
+      },
+    },
+  ],
+],
+```
+
+#### 3. eas.json API URL 확인
+- preview/production 프로파일의 `API_BASE_URL`이 실제 배포 서버 URL과 일치 확인
+
+#### 4. 공유 시 자동 저장 기능 추가
+- 공유 인텐트 수신 시 자동 저장 로직 추가
+
+### 테스트 결과 체크
+- [x] DP03-TC01: Expo 설정 검증 (`npx expo config`) 에러 없음
+- [x] DP03-TC02: TypeScript 체크 통과
+- [x] DP03-TC03: EAS Project ID 실제 값 확인
+
+### 참고 파일
+- `app/app.config.js` (수정)
+- `app/eas.json` (확인)
+- `app/App.tsx` (수정)
+
+---
+
+## TASK DEPLOY-04: Android APK 빌드 (EAS Build) ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | 스마트폰에 설치할 수 있는 APK 파일 빌드 |
+| **작업 유형** | 빌드 |
+| **의존성** | DEPLOY-03 완료 |
+
+### 구현 내용
+
+#### 1. Preview 프로파일로 APK 빌드
+```bash
+npm run build:preview:android
+# 또는: eas build --profile preview --platform android
+```
+
+#### 2. 빌드 프로파일 (preview)
+| 설정 | 값 |
+|------|-----|
+| distribution | internal |
+| build type | apk |
+| API URL | `https://linknote-api.up.railway.app/api` |
+| Node 버전 | 20.18.0 |
+
+#### 3. 빌드 결과
+- EAS 클라우드에서 빌드 진행 (로컬 환경 무관)
+- 빌드 완료 후 다운로드 링크 제공
+
+### 테스트 결과 체크
+- [x] DP04-TC01: 빌드 큐에 정상 등록
+- [x] DP04-TC02: 빌드 상태 Finished
+- [x] DP04-TC03: APK 파일 다운로드 완료
+
+### 참고
+- Node 버전을 20.18.0으로 맞추어 EAS Build 호환성 확보
+- EAS Update 설정으로 향후 OTA 업데이트 가능
+
+---
+
+## TASK DEPLOY-05: 스마트폰 설치 및 전체 기능 테스트 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | APK를 스마트폰에 설치하고 모든 기능이 정상 작동하는지 검증 |
+| **작업 유형** | 테스트 |
+| **의존성** | DEPLOY-04 완료 |
+
+### 테스트 결과 (20/20 통과)
+
+#### A. 기본 기능 테스트
+- [x] DP05-TC01: 앱 실행 (스플래시 → 홈 화면)
+- [x] DP05-TC02: 빈 상태 화면 + FAB 버튼
+- [x] DP05-TC03: FAB 버튼 → SaveLink 화면 이동
+
+#### B. 링크 저장 테스트
+- [x] DP05-TC04: URL 직접 입력 → 저장 성공
+- [x] DP05-TC05: 로딩 스켈레톤 UI 표시
+- [x] DP05-TC06: 링크 카드 (썸네일, 제목, 요약, 태그)
+- [x] DP05-TC07: 중복 저장 방지 에러 토스트
+- [x] DP05-TC08: 빈 URL 입력 에러 토스트
+
+#### C. 링크 상세 화면 테스트
+- [x] DP05-TC09: 상세 화면 표시
+- [x] DP05-TC10: YouTube에서 보기 버튼
+- [x] DP05-TC11: 공유하기 버튼
+
+#### D. 링크 삭제 테스트
+- [x] DP05-TC12: 삭제 확인 Alert 표시
+- [x] DP05-TC13: 삭제 취소
+- [x] DP05-TC14: 삭제 실행 → 홈 복귀
+
+#### E. 공유 인텐트 테스트
+- [x] DP05-TC15: YouTube 앱에서 공유 → URL 수신
+- [x] DP05-TC16: 공유 후 자동 저장
+- [x] DP05-TC17: 브라우저에서 공유 → URL 수신
+
+#### F. AI 기능 확인
+- [x] DP05-TC18: AI 요약 품질 (20~50자 한국어)
+- [x] DP05-TC19: AI 태그 관련성
+- [x] DP05-TC20: AI 카테고리 분류
+
+---
+
+# PHASE 6: 인증 + 멀티 플랫폼 + 카테고리 확장
+
+---
+
+## TASK AUTH-01: Supabase Auth 스키마 + 서버 인증 미들웨어 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | Supabase Auth 기반 사용자 인증 시스템의 서버 측 구현 |
+| **작업 유형** | 서버 |
+| **의존성** | 없음 (PHASE 6 첫 번째 태스크) |
+
+### 구현 내용
+
+#### 1. JWT 검증 미들웨어 (server/app/core/auth.py)
+```python
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> str:
+    token = credentials.credentials
+    payload = jwt.decode(
+        token, settings.SUPABASE_JWT_SECRET,
+        algorithms=["HS256"], audience="authenticated",
+    )
+    user_id = payload.get("sub")
+    return user_id
+```
+- Bearer 토큰에서 HS256 디코딩 → user_id(sub) 추출
+- 만료/무효 토큰 시 `AuthenticationError(401)` 발생
+
+#### 2. 환경변수 추가 (config.py)
+| 변수 | 용도 |
+|------|------|
+| `SUPABASE_SERVICE_KEY` | service role key (RLS 우회) |
+| `SUPABASE_JWT_SECRET` | JWT 토큰 검증용 시크릿 |
+
+#### 3. 인증 예외 클래스 (exceptions.py)
+```python
+class AuthenticationError(LinkNoteException):
+    def __init__(self, message="인증이 필요합니다."):
+        super().__init__(message, status_code=401, error_type="authentication_error")
+```
+
+#### 4. API 엔드포인트 보호 (api/links.py)
+- `POST /save` → `user_id = Depends(get_current_user)`
+- `GET /` → `user_id = Depends(get_current_user)`
+- `GET /{link_id}` → `user_id = Depends(get_current_user)`
+- `DELETE /{link_id}` → `user_id = Depends(get_current_user)`
+
+#### 5. 사용자별 데이터 격리 (database.py)
+- 모든 메서드에 `user_id` 파라미터 추가
+- `.eq('user_id', user_id)` 필터 적용
+- service key 사용 시 RLS 우회 + 서버 측 수동 필터링
+- 중복 체크도 사용자별 (`get_link_by_url(url, user_id)`)
+
+#### 6. 모델 업데이트 (models/link.py)
+- `LinkResponse`에 `user_id: str` 필드 추가
+
+#### 7. 예외 핸들러 (main.py)
+- `AuthenticationError` 전용 핸들러 + `WWW-Authenticate: Bearer` 헤더
+
+#### 8. DB 스키마 (supabase_schema.sql)
+```sql
+-- user_id 컬럼 + RLS 정책
+user_id UUID NOT NULL REFERENCES auth.users(id)
+CREATE POLICY "Users read own links" ON links FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users insert own links" ON links FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users delete own links" ON links FOR DELETE USING (auth.uid() = user_id);
+```
+
+#### 9. 보안 조치
+- `.env.example`에 노출된 실제 API 키 → 플레이스홀더로 교체
+- `PyJWT>=2.8.0` 의존성 추가
+
+### 인증 방식
+- 서버는 `SUPABASE_SERVICE_KEY`(service role)로 Supabase 접근 (RLS 우회)
+- JWT를 직접 디코딩하여 user_id 추출 → Supabase API 호출 없이 빠름
+- 클라이언트별 데이터 격리는 쿼리 필터링으로 처리
+
+### 변경 파일 (11개)
+| 파일 | 변경 |
+|------|------|
+| **신규** `server/app/core/auth.py` | JWT 검증 Dependency |
+| **신규** `server/tests/test_auth.py` | 9개 테스트 케이스 |
+| `server/app/core/config.py` | JWT_SECRET, SERVICE_KEY 추가 |
+| `server/app/core/exceptions.py` | AuthenticationError 추가 |
+| `server/app/api/links.py` | 인증 Dependency 적용 |
+| `server/app/services/database.py` | user_id 필터링 |
+| `server/app/models/link.py` | user_id 필드 추가 |
+| `server/main.py` | 인증 예외 핸들러 |
+| `server/requirements.txt` | PyJWT 추가 |
+| `server/.env.example` | 플레이스홀더 교체 |
+| `server/supabase_schema.sql` | user_id + RLS 정책 |
+
+### 테스트 결과 체크 (9/9 PASSED)
+- [x] AUTH01-TC01: Authorization 헤더 없으면 401
+- [x] AUTH01-TC02: 잘못된 JWT면 401
+- [x] AUTH01-TC02b: 만료된 JWT면 401
+- [x] AUTH01-TC03: 유효한 JWT에서 user_id 정상 추출
+- [x] AUTH01-TC04: User A가 User B의 링크 목록 조회 불가
+- [x] AUTH01-TC04b: User A가 User B의 링크 ID 조회 불가
+- [x] AUTH01-TC05: 같은 URL 다른 사용자 각각 저장 가능
+- [x] AUTH01-추가1: 루트 엔드포인트 인증 불필요
+- [x] AUTH01-추가2: 헬스 엔드포인트 인증 불필요
+
+### 배포 전 수동 작업
+1. Supabase SQL Editor에서 마이그레이션 실행 (user_id 컬럼 + RLS 정책)
+2. Railway 환경변수에 `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET` 추가
+3. 기존 데이터에 user_id 할당 (첫 사용자 생성 후)
+
+### 참고 파일
+- `server/app/core/auth.py` (신규)
+- `server/tests/test_auth.py` (신규)
+- `server/app/core/config.py` (수정)
+- `server/app/core/exceptions.py` (수정)
+- `server/app/api/links.py` (수정)
+- `server/app/services/database.py` (수정)
+- `server/app/models/link.py` (수정)
+- `server/main.py` (수정)
+- `server/requirements.txt` (수정)
+- `server/.env.example` (수정)
+- `server/supabase_schema.sql` (수정)
