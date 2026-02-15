@@ -10,6 +10,7 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinkCard } from '../components/LinkCard';
+import { FilterChips } from '../components/FilterChips';
 import { SkeletonList } from '../components/SkeletonCard';
 import { linkApi } from '../services/api';
 import { Link } from '../types/link';
@@ -23,11 +24,13 @@ export const HomeScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedMediaType, setSelectedMediaType] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const fetchLinks = useCallback(async () => {
     try {
       setError(null);
-      const response = await linkApi.getLinks();
+      const response = await linkApi.getLinks(50, 0, selectedMediaType, selectedCategory);
       setLinks(response.links);
     } catch (err) {
       setError('링크를 불러올 수 없습니다.');
@@ -36,7 +39,7 @@ export const HomeScreen: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [selectedMediaType, selectedCategory]);
 
   // 화면이 포커스될 때마다 목록 새로고침
   useFocusEffect(
@@ -85,6 +88,14 @@ export const HomeScreen: React.FC = () => {
       <FlatList
         data={links}
         keyExtractor={(item) => item.id}
+        ListHeaderComponent={
+          <FilterChips
+            selectedMediaType={selectedMediaType}
+            selectedCategory={selectedCategory}
+            onMediaTypeChange={setSelectedMediaType}
+            onCategoryChange={setSelectedCategory}
+          />
+        }
         renderItem={({ item }) => (
           <LinkCard
             link={item}

@@ -8,6 +8,7 @@ import {
   Linking,
 } from 'react-native';
 import { Link } from '../types/link';
+import { getPlatformConfig } from '../utils/platform';
 
 interface LinkCardProps {
   link: Link;
@@ -32,12 +33,24 @@ export const LinkCard: React.FC<LinkCardProps> = ({ link, onPress }) => {
     });
   };
 
+  const platform = getPlatformConfig(link.media_type);
+
   return (
     <TouchableOpacity style={styles.card} onPress={handlePress}>
       {link.thumbnail && (
-        <Image source={{ uri: link.thumbnail }} style={styles.thumbnail} />
+        <View>
+          <Image source={{ uri: link.thumbnail }} style={styles.thumbnail} />
+          <View style={[styles.platformBadge, { backgroundColor: platform.color }]}>
+            <Text style={styles.platformBadgeText}>{platform.label}</Text>
+          </View>
+        </View>
       )}
       <View style={styles.content}>
+        {!link.thumbnail && (
+          <View style={[styles.platformBadgeInline, { backgroundColor: platform.color }]}>
+            <Text style={styles.platformBadgeText}>{platform.label}</Text>
+          </View>
+        )}
         <Text style={styles.title} numberOfLines={2}>
           {link.title}
         </Text>
@@ -74,6 +87,26 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 180,
     resizeMode: 'cover',
+  },
+  platformBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  platformBadgeInline: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  platformBadgeText: {
+    fontSize: 11,
+    color: '#fff',
+    fontWeight: '700',
   },
   content: {
     padding: 16,

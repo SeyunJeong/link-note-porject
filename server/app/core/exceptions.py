@@ -56,3 +56,9 @@ class AuthenticationError(LinkNoteException):
     """인증 실패"""
     def __init__(self, message: str = "인증이 필요합니다.", error_type: str = "authentication_error"):
         super().__init__(message, status_code=401, error_type=error_type)
+
+
+class MetadataExtractionError(LinkNoteException):
+    """메타데이터 추출 실패"""
+    def __init__(self, message: str, error_type: str = "metadata_error"):
+        super().__init__(message, status_code=400, error_type=error_type)

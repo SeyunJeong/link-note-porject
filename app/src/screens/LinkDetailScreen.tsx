@@ -16,6 +16,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { linkApi } from '../services/api';
 import { showToast } from '../utils/toast';
+import { getPlatformConfig } from '../utils/platform';
 
 type LinkDetailScreenRouteProp = RouteProp<RootStackParamList, 'LinkDetail'>;
 type LinkDetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LinkDetail'>;
@@ -25,6 +26,7 @@ export const LinkDetailScreen: React.FC = () => {
   const navigation = useNavigation<LinkDetailScreenNavigationProp>();
   const { link } = route.params;
   const [deleting, setDeleting] = useState(false);
+  const platform = getPlatformConfig(link.media_type);
 
   const handleOpenLink = () => {
     Linking.openURL(link.url);
@@ -87,11 +89,16 @@ export const LinkDetailScreen: React.FC = () => {
       <View style={styles.content}>
         <Text style={styles.title}>{link.title}</Text>
 
-        {link.category && (
-          <View style={styles.categoryContainer}>
-            <Text style={styles.categoryText}>{link.category}</Text>
+        <View style={styles.badgeRow}>
+          <View style={[styles.mediaBadge, { backgroundColor: platform.color }]}>
+            <Text style={styles.mediaBadgeText}>{platform.label}</Text>
           </View>
-        )}
+          {link.category && (
+            <View style={styles.categoryContainer}>
+              <Text style={styles.categoryText}>{link.category}</Text>
+            </View>
+          )}
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>요약</Text>
@@ -117,8 +124,11 @@ export const LinkDetailScreen: React.FC = () => {
         </View>
 
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.primaryButton} onPress={handleOpenLink}>
-            <Text style={styles.primaryButtonText}>YouTube에서 보기</Text>
+          <TouchableOpacity
+            style={[styles.primaryButton, { backgroundColor: platform.color }]}
+            onPress={handleOpenLink}
+          >
+            <Text style={styles.primaryButtonText}>{platform.openLabel}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.secondaryButton} onPress={handleShare}>
@@ -162,13 +172,27 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     lineHeight: 30,
   },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 20,
+    flexWrap: 'wrap',
+  },
+  mediaBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  mediaBadgeText: {
+    fontSize: 13,
+    color: '#fff',
+    fontWeight: '600',
+  },
   categoryContainer: {
-    alignSelf: 'flex-start',
     backgroundColor: '#007AFF',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    marginBottom: 20,
   },
   categoryText: {
     fontSize: 13,

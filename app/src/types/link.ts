@@ -6,6 +6,7 @@ export interface Link {
   summary: string;
   tags: string[];
   category: string | null;
+  media_type: string;
   created_at: string;
 }
 

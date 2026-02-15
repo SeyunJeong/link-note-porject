@@ -26,6 +26,7 @@ class DatabaseService:
         tags: list[str],
         category: str,
         user_id: str,
+        media_type: str = "web",
     ) -> dict:
         data = {
             'id': str(uuid.uuid4()),
@@ -35,6 +36,7 @@ class DatabaseService:
             'summary': summary,
             'tags': tags,
             'category': category,
+            'media_type': media_type,
             'user_id': user_id,
             'created_at': datetime.utcnow().isoformat(),
         }
@@ -42,15 +44,20 @@ class DatabaseService:
         result = self.client.table('links').insert(data).execute()
         return result.data[0] if result.data else data
 
-    async def get_links(self, user_id: str, limit: int = 50, offset: int = 0) -> list[dict]:
-        result = (
-            self.client.table('links')
-            .select('*')
-            .eq('user_id', user_id)
-            .order('created_at', desc=True)
-            .range(offset, offset + limit - 1)
-            .execute()
-        )
+    async def get_links(
+        self,
+        user_id: str,
+        limit: int = 50,
+        offset: int = 0,
+        media_type: Optional[str] = None,
+        category: Optional[str] = None,
+    ) -> list[dict]:
+        query = self.client.table('links').select('*').eq('user_id', user_id)
+        if media_type:
+            query = query.eq('media_type', media_type)
+        if category:
+            query = query.eq('category', category)
+        result = query.order('created_at', desc=True).range(offset, offset + limit - 1).execute()
         return result.data
 
     async def get_link_by_id(self, link_id: str, user_id: str) -> Optional[dict]:
@@ -74,13 +81,18 @@ class DatabaseService:
         )
         return result.data[0] if result.data else None
 
-    async def get_links_count(self, user_id: str) -> int:
-        result = (
-            self.client.table('links')
-            .select('id', count='exact')
-            .eq('user_id', user_id)
-            .execute()
-        )
+    async def get_links_count(
+        self,
+        user_id: str,
+        media_type: Optional[str] = None,
+        category: Optional[str] = None,
+    ) -> int:
+        query = self.client.table('links').select('id', count='exact').eq('user_id', user_id)
+        if media_type:
+            query = query.eq('media_type', media_type)
+        if category:
+            query = query.eq('category', category)
+        result = query.execute()
         return result.count or 0
 
     async def delete_link(self, link_id: str, user_id: str) -> bool:

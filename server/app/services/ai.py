@@ -48,7 +48,7 @@ VALID_CATEGORIES = ['개발', '투자', '건강', '교육', '엔터테인먼트'
 SUMMARY_SYSTEM_PROMPT = """당신은 콘텐츠 요약 전문가입니다.
 
 ## 작업
-주어진 YouTube 영상의 제목과 설명을 바탕으로 **핵심 가치**를 담은 한 줄 요약을 작성하세요.
+주어진 콘텐츠의 제목과 설명을 바탕으로 **핵심 가치**를 담은 한 줄 요약을 작성하세요.
 
 ## 규칙
 1. 길이: 20-50자 (한국어 기준)
@@ -74,7 +74,7 @@ SUMMARY_SYSTEM_PROMPT = """당신은 콘텐츠 요약 전문가입니다.
 TAG_SYSTEM_PROMPT = """당신은 콘텐츠 태깅 전문가입니다.
 
 ## 작업
-YouTube 영상의 제목과 설명을 분석하여 검색과 분류에 유용한 태그를 생성하세요.
+콘텐츠의 제목과 설명을 분석하여 검색과 분류에 유용한 태그를 생성하세요.
 
 ## 규칙
 1. 태그 개수: 정확히 5개
@@ -186,7 +186,7 @@ class AIService:
         if len(clean_title) < 5:
             clean_title = truncated_title
 
-        return f"{clean_title}에 대한 영상"
+        return f"{clean_title}에 대한 콘텐츠"
 
     def validate_category(self, category: str) -> str:
         """카테고리 유효성 검증 - 유효하지 않으면 '기타' 반환"""
@@ -208,7 +208,7 @@ class AIService:
 
         # 5개 미만이면 기본 태그로 채우기
         if len(cleaned_tags) < 5:
-            default_tags = ['유튜브', '영상', '콘텐츠', '정보', '일반']
+            default_tags = ['콘텐츠', '링크', '정보', '일반', '추천']
             for dt in default_tags:
                 if len(cleaned_tags) >= 5:
                     break
@@ -220,7 +220,7 @@ class AIService:
     def generate_fallback_tags(self, title: str) -> list[str]:
         """AI 실패 시 제목 기반 태그 생성"""
         if not title:
-            return ['유튜브', '영상', '콘텐츠', '정보', '일반']
+            return ['콘텐츠', '링크', '정보', '일반', '추천']
 
         # 제목에서 단어 추출 (불용어 제외)
         stopwords = ['의', '를', '을', '에', '이', '가', '은', '는', '하는', '한', '된', '대한']
@@ -228,7 +228,7 @@ class AIService:
         filtered = [w for w in words if w not in stopwords and len(w) > 1][:3]
 
         # 기본 태그와 합치기
-        base_tags = ['유튜브', '콘텐츠']
+        base_tags = ['콘텐츠', '링크']
         all_tags = filtered + base_tags
 
         return all_tags[:5] if len(all_tags) >= 5 else all_tags + ['정보', '일반'][:5 - len(all_tags)]

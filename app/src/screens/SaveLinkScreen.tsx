@@ -71,11 +71,11 @@ export const SaveLinkScreen: React.FC = () => {
     >
       <View style={styles.content}>
         <Text style={styles.title}>링크 저장하기</Text>
-        <Text style={styles.subtitle}>유튜브 링크를 입력해주세요</Text>
+        <Text style={styles.subtitle}>링크를 입력해주세요</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="https://youtube.com/watch?v=..."
+          placeholder="https://..."
           placeholderTextColor="#999"
           value={url}
           onChangeText={setUrl}

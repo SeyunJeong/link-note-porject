@@ -15,7 +15,7 @@ export default {
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
-    newArchEnabled: false,
+    newArchEnabled: true,
     splash: {
       image: './assets/splash-icon.png',
       resizeMode: 'contain',
@@ -30,9 +30,6 @@ export default {
             CFBundleURLSchemes: ['linknote'],
           },
         ],
-        NSAppTransportSecurity: {
-          NSAllowsArbitraryLoads: true,
-        },
       },
     },
     android: {
@@ -66,6 +63,8 @@ export default {
     },
     extra: {
       apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:8000/api',
+      supabaseUrl: process.env.SUPABASE_URL || '',
+      supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
       eas: {
         projectId: '532a54c8-b257-4941-8f3e-e2b3b7a417a1',
       },

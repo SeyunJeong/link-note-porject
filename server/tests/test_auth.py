@@ -94,7 +94,7 @@ class TestAuthMiddleware:
 
         # user_id가 DB 서비스에 올바르게 전달되었는지 확인
         mock_db.get_links.assert_called_once_with(
-            TEST_USER_A_ID, limit=50, offset=0
+            TEST_USER_A_ID, limit=50, offset=0, media_type=None, category=None,
         )
 
 
@@ -123,7 +123,7 @@ class TestUserIsolation:
 
         # User A의 user_id로만 조회했는지 확인
         mock_db.get_links.assert_called_once_with(
-            TEST_USER_A_ID, limit=50, offset=0
+            TEST_USER_A_ID, limit=50, offset=0, media_type=None, category=None,
         )
 
     @patch("app.core.auth.settings")

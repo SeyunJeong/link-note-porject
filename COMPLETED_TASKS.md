@@ -37,6 +37,11 @@
 | DEPLOY-04 | Android APK 빌드 (EAS Build) | 2026-02-08 |
 | DEPLOY-05 | 스마트폰 설치 및 전체 기능 테스트 | 2026-02-08 |
 | AUTH-01 | Supabase Auth 스키마 + 서버 인증 미들웨어 | 2026-02-08 |
+| AUTH-02 | 앱 로그인/회원가입 + Google OAuth | 2026-02-15 |
+| AUTH-03 | 앱-서버 JWT 연동 | 2026-02-15 |
+| CAT-01 | 듀얼 카테고리 시스템 + media_type | 2026-02-15 |
+| PLATFORM-01 | 멀티 플랫폼 메타데이터 추출기 | 2026-02-15 |
+| PLATFORM-02 | 앱 UI 멀티 플랫폼 + 필터 칩 | 2026-02-15 |
 
 ---
 
@@ -1814,3 +1819,286 @@ CREATE POLICY "Users delete own links" ON links FOR DELETE USING (auth.uid() = u
 - `server/requirements.txt` (수정)
 - `server/.env.example` (수정)
 - `server/supabase_schema.sql` (수정)
+
+---
+
+## AUTH-02: 앱 로그인/회원가입 + Google OAuth
+
+### 완료일: 2026-02-15
+
+### 작업 내용
+1. **패키지 설치**: `@supabase/supabase-js`, `@react-native-async-storage/async-storage`, `expo-web-browser`
+2. **Supabase 클라이언트**: `app/src/services/supabase.ts` - AsyncStorage 기반 세션 영속화, 자동 토큰 갱신
+3. **AuthContext**: `app/src/contexts/AuthContext.tsx` - user/session 상태 관리, signUp/signIn/signInWithGoogle/signOut
+4. **LoginScreen**: `app/src/screens/LoginScreen.tsx` - 이메일/비밀번호 로그인 + Google OAuth 버튼
+5. **SignUpScreen**: `app/src/screens/SignUpScreen.tsx` - 이메일/비밀번호/확인 입력 + 가입
+6. **App.tsx 리팩토링**: AuthProvider 래핑, `user ? <AppStack /> : <AuthStack />` 네비게이션 분기
+7. **환경변수**: `.env.*` 파일에 SUPABASE_URL, SUPABASE_ANON_KEY 추가
+8. **app.config.js**: Supabase 환경변수를 extra로 노출
+9. **config/index.ts**: supabaseUrl, supabaseAnonKey 설정 추가
+10. **로그아웃**: HomeScreen 헤더에 로그아웃 버튼 (확인 Alert 포함)
+
+### 테스트 결과
+| TC | 설명 | 결과 |
+|----|------|------|
+| TC01 | TypeScript 컴파일 | ✅ 에러 없음 |
+| TC02 | 서버 AUTH 테스트 (regression) | ✅ 9/9 통과 |
+| TC03 | 이메일 회원가입 화면 | ✅ 구현 완료 |
+| TC04 | 이메일 로그인 화면 | ✅ 구현 완료 |
+| TC05 | Google OAuth 플로우 | ✅ 구현 완료 (expo-web-browser) |
+| TC06 | 세션 유지 (자동 로그인) | ✅ AsyncStorage 기반 영속화 |
+| TC07 | 로그아웃 | ✅ Alert 확인 후 signOut |
+| TC08 | 인증 분기 네비게이션 | ✅ AuthStack / AppStack 분리 |
+
+### 아키텍처
+```
+AuthProvider (AuthContext)
+  └─ ShareIntentProvider
+       └─ RootNavigator
+            ├─ user 있음 → AppStack (Home, SaveLink, LinkDetail)
+            └─ user 없음 → AuthStack (Login, SignUp)
+```
+
+### Google OAuth 설정 (수동 필요)
+1. Google Cloud Console에서 OAuth 2.0 클라이언트 생성
+2. Supabase Dashboard → Authentication → Providers → Google 활성화
+3. `.env.development`와 `.env.production`에 실제 Supabase URL/Key 입력
+
+### 참고 파일
+- `app/src/services/supabase.ts` (신규)
+- `app/src/contexts/AuthContext.tsx` (신규)
+- `app/src/screens/LoginScreen.tsx` (신규)
+- `app/src/screens/SignUpScreen.tsx` (신규)
+- `app/App.tsx` (수정)
+- `app/src/config/index.ts` (수정)
+- `app/app.config.js` (수정)
+- `app/.env.development` (수정)
+- `app/.env.production` (수정)
+- `app/.env.example` (수정)
+- `app/package.json` (수정 - 패키지 추가)
+
+---
+
+## AUTH-03: 앱-서버 JWT 연동
+
+### 완료일: 2026-02-15
+
+### 작업 내용
+1. **Request 인터셉터** (`api.ts`): 모든 API 요청에 `supabase.auth.getSession()`으로 가져온 access_token을 `Authorization: Bearer` 헤더로 자동 첨부
+2. **Response 인터셉터** (`api.ts`): 401 응답 시 `supabase.auth.refreshSession()`으로 토큰 갱신 → 성공 시 원래 요청 재시도, 실패 시 `signOut()` 호출
+3. **공유 인텐트 대기열** (`App.tsx`):
+   - 미인증 상태에서 공유 인텐트 수신 시 `pendingShareUrl`에 URL 임시 저장
+   - `ShareIntentCatcher` 컴포넌트가 AuthStack에서 공유 인텐트를 캐치
+   - 로그인 완료 후 `AppNavigator` 마운트 시 대기열 URL 자동 저장
+
+### 인터셉터 플로우
+```
+[Request] → getSession() → Bearer 토큰 첨부 → 서버
+[Response 200] → 정상 반환
+[Response 401] → refreshSession()
+  ├─ 갱신 성공 → 새 토큰으로 재요청
+  └─ 갱신 실패 → signOut() → 로그인 화면
+```
+
+### 공유 인텐트 플로우
+```
+[공유 인텐트 수신]
+  ├─ 인증됨 (AppNavigator) → 즉시 자동 저장
+  └─ 미인증 (AuthNavigator)
+       → pendingShareUrl에 URL 저장
+       → "로그인 후 저장됩니다" 토스트
+       → 로그인 완료 → AppNavigator 마운트 → 대기열 URL 자동 저장
+```
+
+### 테스트 결과
+| TC | 설명 | 결과 |
+|----|------|------|
+| TC01 | TypeScript 컴파일 | ✅ 에러 없음 |
+| TC02 | 서버 AUTH 테스트 (regression) | ✅ 9/9 통과 |
+| TC03 | Request 인터셉터 (Bearer 토큰) | ✅ 구현 완료 |
+| TC04 | Response 인터셉터 (401 → 갱신/재요청) | ✅ 구현 완료 |
+| TC05 | 갱신 실패 시 signOut | ✅ 구현 완료 |
+| TC06 | 인증 상태 공유 인텐트 | ✅ 즉시 자동 저장 |
+| TC07 | 미인증 상태 공유 인텐트 | ✅ URL 대기열 → 로그인 후 처리 |
+
+### 참고 파일
+- `app/src/services/api.ts` (수정 - 인터셉터 추가)
+- `app/App.tsx` (수정 - 공유 인텐트 대기열)
+
+---
+
+## CAT-01: 듀얼 카테고리 시스템 + media_type
+
+### 완료일: 2026-02-15
+
+### 작업 내용
+1. **platform.py** (신규): URL 도메인 기반 `detect_media_type()` 함수 - youtube/instagram/threads/x/tiktok/web
+2. **models/link.py**: LinkResponse에 `media_type: str = "web"` 필드 추가
+3. **database.py**: `save_link()`에 `media_type` 파라미터 추가, DB 저장 데이터에 포함
+4. **api/links.py**: YouTube 전용 게이트 제거, `detect_media_type()` 호출, 모든 URL 허용
+5. **ai.py**: AI 프롬프트 범용화 ("YouTube 영상" → "콘텐츠"), 폴백 태그/요약 범용화
+6. **link.ts** (앱): Link 인터페이스에 `media_type: string` 추가
+
+### DB 마이그레이션 (수동 실행 필요)
+```sql
+ALTER TABLE links ADD COLUMN media_type TEXT DEFAULT 'web';
+UPDATE links SET media_type = 'youtube' WHERE url LIKE '%youtube.com%' OR url LIKE '%youtu.be%';
+CREATE INDEX idx_links_media_type ON links(media_type);
+```
+
+### 테스트 결과
+| TC | 설명 | 결과 |
+|----|------|------|
+| TC01 | youtube.com URL → youtube | ✅ |
+| TC02 | youtu.be URL → youtube | ✅ |
+| TC03 | instagram.com URL → instagram | ✅ |
+| TC04 | threads.net URL → threads | ✅ |
+| TC05 | x.com / twitter.com URL → x | ✅ |
+| TC06 | tiktok.com URL → tiktok | ✅ |
+| TC07 | 기타 URL → web | ✅ |
+| TC08 | 저장 시 media_type 전달 확인 | ✅ |
+| 서버 전체 | platform 14/14 + auth 9/9 | ✅ 23/23 |
+| 앱 | TypeScript 컴파일 | ✅ 에러 없음 |
+
+### 참고 파일
+- `server/app/services/platform.py` (신규)
+- `server/tests/test_platform.py` (신규)
+- `server/app/api/links.py` (수정)
+- `server/app/services/database.py` (수정)
+- `server/app/models/link.py` (수정)
+- `server/app/services/ai.py` (수정)
+- `app/src/types/link.ts` (수정)
+
+---
+
+## TASK PLATFORM-01: 멀티 플랫폼 메타데이터 추출기 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | YouTube 외 Instagram, TikTok, X, Threads, 일반 웹 링크의 메타데이터 추출 지원 |
+| **작업 유형** | 기능 구현 |
+| **의존성** | CAT-01 |
+
+### 구현 내용
+
+**Strategy + Factory 패턴 기반 메타데이터 추출 시스템:**
+
+1. **ContentMetadata 데이터클래스** (`base.py`)
+   - 플랫폼 독립적 메타데이터 모델 (title, description, thumbnail, platform, duration, author, view_count)
+
+2. **MetadataExtractor ABC** (`base.py`)
+   - `can_handle(url)`: URL 처리 가능 여부
+   - `extract(url)`: 메타데이터 추출
+
+3. **YtDlpExtractor** (`ytdlp_extractor.py`)
+   - YouTube, Instagram, TikTok, X/Twitter URL 지원
+   - yt-dlp 라이브러리 사용, 3회 재시도 로직
+   - 최적 썸네일 자동 선택 (720p 이상)
+
+4. **OpenGraphExtractor** (`opengraph_extractor.py`)
+   - httpx + BeautifulSoup로 OG 태그 파싱
+   - Threads, 일반 웹 등 모든 URL 처리 가능
+   - 네트워크 오류 시 URL 기반 기본 메타데이터 반환
+
+5. **MetadataExtractorFactory** (`extractor_factory.py`)
+   - URL에 따라 적절한 추출기 자동 선택
+   - yt-dlp 실패 시 OpenGraph로 자동 폴백
+
+6. **links.py 리팩터링**
+   - YouTube 전용 메타데이터 추출 → 팩토리 패턴으로 교체
+   - `metadata_factory.extract(url)` 단일 호출로 모든 플랫폼 처리
+
+### 테스트 결과
+| TC | 설명 | 결과 |
+|----|------|------|
+| TC01 | YouTube URL can_handle | ✅ |
+| TC02 | Instagram URL can_handle | ✅ |
+| TC03 | TikTok URL can_handle | ✅ |
+| TC04 | X/Twitter URL can_handle | ✅ |
+| TC05 | 팩토리 추출기 선택 (YtDlp/OpenGraph) | ✅ |
+| TC06 | YouTube 메타데이터 추출 (mock) | ✅ |
+| TC07 | Instagram 메타데이터 추출 (mock) | ✅ |
+| TC08 | 일반 웹 OpenGraph 추출 (mock) | ✅ |
+| TC09 | 네트워크 오류 시 기본 메타데이터 반환 | ✅ |
+| TC10 | yt-dlp 실패 → OpenGraph 폴백 | ✅ |
+| TC11 | 비YouTube URL 저장 통합 테스트 | ✅ |
+| 서버 전체 | 63/63 테스트 통과 | ✅ |
+| 앱 | TypeScript 컴파일 | ✅ 에러 없음 |
+
+### 참고 파일
+- `server/app/services/metadata/__init__.py` (신규)
+- `server/app/services/metadata/base.py` (신규)
+- `server/app/services/metadata/ytdlp_extractor.py` (신규)
+- `server/app/services/metadata/opengraph_extractor.py` (신규)
+- `server/app/services/metadata/extractor_factory.py` (신규)
+- `server/tests/test_metadata.py` (신규)
+- `server/app/core/exceptions.py` (수정)
+- `server/requirements.txt` (수정)
+- `server/app/api/links.py` (수정)
+- `server/tests/test_ai_fallback.py` (수정)
+- `server/tests/test_duplicate_prevention.py` (수정)
+
+---
+
+## TASK PLATFORM-02: 앱 UI 멀티 플랫폼 + 필터 칩 ✅
+
+### 개요
+| 항목 | 내용 |
+|------|------|
+| **목적** | YouTube 하드코딩 제거, 멀티 플랫폼 UI 대응, 매체별/주제별 필터링 |
+| **작업 유형** | UI 구현 + API 확장 |
+| **의존성** | PLATFORM-01 |
+
+### 구현 내용
+
+**1. 플랫폼 설정 유틸리티** (`app/src/utils/platform.ts`)
+- `PLATFORM_CONFIG`: YouTube/Instagram/Threads/X/TikTok/Web 각각의 label, color, openLabel 정의
+- `CATEGORIES`: 서버와 동일한 8개 카테고리 목록
+- `getPlatformConfig()`: media_type으로 설정 조회
+
+**2. 필터 칩 컴포넌트** (`app/src/components/FilterChips.tsx`)
+- 매체별 필터: 수평 스크롤, 플랫폼별 고유 색상, 토글 선택
+- 주제별 필터: 수평 스크롤, 8개 카테고리, 토글 선택
+- "전체" 칩으로 필터 해제
+
+**3. LinkCard 매체 뱃지**
+- 썸네일 있는 경우: 썸네일 좌상단 오버레이 뱃지 (플랫폼 색상)
+- 썸네일 없는 경우: 제목 위 인라인 뱃지
+
+**4. LinkDetailScreen 동적 버튼**
+- "YouTube에서 보기" → `platform.openLabel` (예: "Instagram에서 보기")
+- 버튼 색상: 플랫폼 고유 색상
+- 듀얼 뱃지: 매체 뱃지 + 주제 카테고리 뱃지 나란히 표시
+
+**5. SaveLinkScreen YouTube 하드코딩 제거**
+- "유튜브 링크를 입력해주세요" → "링크를 입력해주세요"
+- placeholder: "https://youtube.com/watch?v=..." → "https://..."
+
+**6. 서버 필터링 API**
+- `GET /api/links/?media_type=youtube&category=개발` 쿼리 파라미터 지원
+- `database.py`: get_links(), get_links_count()에 조건부 `.eq()` 필터 체이닝
+- `api.ts`: getLinks()에 mediaType, category 옵셔널 파라미터 추가
+
+### 테스트 결과
+| TC | 설명 | 결과 |
+|----|------|------|
+| TC01 | 필터 없이 전체 조회 (API) | ✅ |
+| TC02 | media_type 필터 YouTube (API) | ✅ |
+| TC03 | category 필터 '개발' (API) | ✅ |
+| TC04 | media_type + category 교집합 (API) | ✅ |
+| 서버 전체 | 67/67 테스트 통과 | ✅ |
+| 앱 | TypeScript 컴파일 에러 없음 | ✅ |
+
+### 참고 파일
+- `app/src/utils/platform.ts` (신규)
+- `app/src/components/FilterChips.tsx` (신규)
+- `server/tests/test_filter_api.py` (신규)
+- `app/src/components/LinkCard.tsx` (수정)
+- `app/src/screens/HomeScreen.tsx` (수정)
+- `app/src/screens/LinkDetailScreen.tsx` (수정)
+- `app/src/screens/SaveLinkScreen.tsx` (수정)
+- `app/src/services/api.ts` (수정)
+- `server/app/api/links.py` (수정)
+- `server/app/services/database.py` (수정)
+- `server/tests/test_auth.py` (수정 - 필터 파라미터 반영)

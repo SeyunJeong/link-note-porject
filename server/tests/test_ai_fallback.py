@@ -106,7 +106,7 @@ class TestAIServiceFallback:
 
         assert tags is not None
         assert len(tags) == 5
-        assert "유튜브" in tags
+        assert "콘텐츠" in tags
 
     def test_validate_category_valid(self):
         """유효한 카테고리 검증"""

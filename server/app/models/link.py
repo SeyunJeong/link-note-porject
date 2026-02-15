@@ -15,6 +15,7 @@ class LinkResponse(BaseModel):
     summary: str
     tags: list[str]
     category: Optional[str] = None
+    media_type: str = "web"
     user_id: str
     created_at: datetime
 
