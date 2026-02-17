@@ -1,7 +1,9 @@
 import uuid
 
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from app.models.link import LinkCreate, LinkResponse, LinkListResponse
 from app.services.youtube import youtube_service
 from app.services.ai import ai_service
@@ -11,6 +13,8 @@ from app.services.metadata import MetadataExtractorFactory
 from app.core.auth import get_current_user
 from app.core.logging import get_logger
 
+limiter = Limiter(key_func=get_remote_address)
+
 logger = get_logger("api.links")
 
 router = APIRouter(prefix="/links", tags=["links"])
@@ -19,7 +23,8 @@ metadata_factory = MetadataExtractorFactory()
 
 
 @router.post("/save", response_model=LinkResponse)
-async def save_link(link: LinkCreate, user_id: str = Depends(get_current_user)):
+@limiter.limit("30/minute")
+async def save_link(request: Request, link: LinkCreate, user_id: str = Depends(get_current_user)):
     url = link.url.strip()
 
     # 1. 매체 타입 감지
@@ -72,7 +77,9 @@ async def save_link(link: LinkCreate, user_id: str = Depends(get_current_user)):
 
 
 @router.get("/", response_model=LinkListResponse)
+@limiter.limit("60/minute")
 async def get_links(
+    request: Request,
     limit: int = 50,
     offset: int = 0,
     media_type: Optional[str] = Query(None),
@@ -92,7 +99,8 @@ async def get_links(
 
 
 @router.get("/{link_id}", response_model=LinkResponse)
-async def get_link(link_id: str, user_id: str = Depends(get_current_user)):
+@limiter.limit("60/minute")
+async def get_link(request: Request, link_id: str, user_id: str = Depends(get_current_user)):
     link = await db_service.get_link_by_id(link_id, user_id)
     if not link:
         raise HTTPException(status_code=404, detail="링크를 찾을 수 없습니다.")
@@ -101,7 +109,8 @@ async def get_link(link_id: str, user_id: str = Depends(get_current_user)):
 
 
 @router.delete("/{link_id}")
-async def delete_link(link_id: str, user_id: str = Depends(get_current_user)):
+@limiter.limit("30/minute")
+async def delete_link(request: Request, link_id: str, user_id: str = Depends(get_current_user)):
     # 0. UUID 형식 검증
     try:
         uuid.UUID(link_id)

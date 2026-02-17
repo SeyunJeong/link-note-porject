@@ -166,6 +166,45 @@ MVP에는 **결제 X**,
 
 ---
 
+# 🟫 PHASE 5~6 — 실기기 테스트 + 인증/멀티플랫폼 (완료)
+
+> Phase 5: EAS Build, APK 빌드, 스마트폰 설치 테스트 (20/20 통과)
+> Phase 6: Supabase Auth, JWT 연동, Google OAuth, 듀얼 카테고리, 멀티 플랫폼 메타데이터
+
+---
+
+# 🟥 PHASE 7 — 출시 (LAUNCH)
+
+> "스토어에 올라간다"
+
+### 출시 작업
+
+| 태스크 | 내용 | 오너 액션 |
+|--------|------|----------|
+| LAUNCH-01 | Google Play 제출 준비 (스크린샷, 배너, 개인정보처리방침, 등급설문) | 스크린샷 촬영, 배너 제작 |
+| LAUNCH-02 | Google Play Console 등록 + APK 업로드 + 심사 제출 | Play Console 작업 |
+| LAUNCH-03 | 프로덕션 보강 (Sentry, Rate Limiting, CORS 화이트리스트) | 없음 (개발) |
+| LAUNCH-04 | iOS 출시 (Apple Developer $99, 프로비저닝, IPA 빌드) | Apple 계정 가입 |
+| LAUNCH-05 | 런칭 마케팅 (공지, 피드백 채널, 초기 유저 확보) | SNS 공유 |
+| LAUNCH-06 | 비용 관리 등록 (개발자 등록비, 서버비, API 비용) | 없음 (총무부) |
+
+### 의존성
+```
+PHASE 6 → LAUNCH-01 → LAUNCH-02 (Google Play 심사 2-7일)
+                     → LAUNCH-04 (iOS 병렬 가능)
+           LAUNCH-02 → LAUNCH-05 (출시 후 마케팅)
+           LAUNCH-03 (독립 - 언제든 가능)
+           LAUNCH-06 (독립 - 즉시 가능)
+```
+
+### PHASE 7 성공 기준
+- Google Play Store 등록 완료
+- 첫 주 다운로드 50+
+- 크래시 프리 비율 99%+
+- 유저 피드백 채널 운영
+
+---
+
 # 🟪 PHASE 4 — 유료화
 
 > "돈이 되는 순간"
